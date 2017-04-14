@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Klotski</title>
+
+    <link rel="stylesheet" href="index.css">
+    <script src="velocity.min.js"></script>
+    <script src="index.js"></script>
+
+</head>
+<body>
+<div id="wrapper">
+    <div id="background">
+        <div id="content">
+            <div class="checkerboard" id="checkerboard">
+                <div class="soldier">
+                    <div id="soldier0" class="soldier-div">
+                        <div>Soldier<p>(卒)</p></div>
+                    </div>
+                </div>
+                <div class="soldier">
+                    <div id="soldier1" class="soldier-div">
+                        <div>Soldier<p>(卒)</p></div>
+                    </div>
+                </div>
+                <div class="soldier">
+                    <div id="soldier2" class="soldier-div">
+                        <div>Soldier<p>(卒)</p></div>
+                    </div>
+                </div>
+                <div class="soldier">
+                    <div id="soldier3" class="soldier-div">
+                        <div>Soldier<p>(卒)</p></div>
+                    </div>
+                </div>
+                <div class=" general-vertical">
+                    <div id="general-vertical0" class="general-vertical-div">
+                        <div>General<p>(张飞)</p></div>
+                    </div>
+                </div>
+                <div class=" general-vertical">
+                    <div id="general-vertical1" class="general-vertical-div">
+                        <div>General<p>(赵云)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class=" general-vertical">
+                    <div id="general-vertical2" class="general-vertical-div">
+                        <div>General<p>(马超)</p></div>
+                    </div>
+                </div>
+                <div class=" general-vertical">
+                    <div id="general-vertical3" class="general-vertical-div">
+                        <div>General<p>(黄忠)</p></div>
+                    </div>
+                </div>
+                <div class=" general-horizontal">
+                    <div id="general-horizontal" class="general-horizontal-div">
+                        <div>General<p>(关 羽)</p></div>
+                    </div>
+                </div>
+                <div class="emperor">
+                    <div class="emperor-div" id="emperor">
+                        <div>Emperor<p>(曹 操)</p></div>
+                    </div>
+                </div>
+
+                <div id="checkerboard-exit"></div>
+            </div>
+            <div style="margin-top: 50px">
+                <p>Target: Move Emperor To Exit(green).</p>
+                <p>Click(Select), W(Up), S(Down), A(Left), D(Right)</p>
+            </div>
+            <div>
+                <button id="refresh">Refresh</button>
+                <button class="template" index="0">横刀立马1</button>
+                <button class="template" index="1">横刀立马2</button>
+                <button class="template" index="2">齐头并前</button>
+                <button class="template" index="3">兵分三路</button>
+                <button class="template" index="4">屯兵东路</button>
+                <button class="template" index="5">左右布兵</button>
+
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

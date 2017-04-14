@@ -1,0 +1,109 @@
+* {
+    padding: 0;
+    margin: 0;
+}
+
+#wrapper {
+    overflow-y: auto;
+    overflow-x: auto;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    text-align: center;
+}
+
+#background {
+    background-color: rgba(250, 250, 250, 0.933333);
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+#content {
+    width: 900px;
+    height: 100%;
+    margin: auto;
+    font-size: larger;
+    /*text-align: center;*/
+    /*display: flex;*/
+    /*align-items: center;*/
+}
+
+.checkerboard {
+    width: 400px;
+    height: 500px;
+    border-style: solid;
+    border-color: #4a4a4a;
+    border-width: medium;
+    position: relative;
+    text-align: center;
+    margin: auto;
+}
+
+#checkerboard-exit {
+    height: 100%;
+    width: 50%;
+    margin-left: 25%;
+    z-index: 1;
+    border-bottom-color: green;
+    border-bottom-width: thick;
+    border-bottom-style: solid;
+}
+
+button {
+    padding: 10px;
+}
+
+.soldier-div, .general-vertical-div, .general-horizontal-div, .emperor-div {
+    border-style: solid;
+    border-color: #4a4a4a;
+    border-width: medium;
+    width: 90%;
+    height: 90%;
+    margin: auto;
+    display: flex;
+    background-color: #ffdead;
+}
+
+.emperor-div {
+    background-color: cadetblue;
+}
+
+.soldier-div div, .general-vertical-div div, .general-horizontal-div div, .emperor-div div {
+    margin: auto;
+}
+
+.select-el {
+    border-color: brown;
+}
+
+.soldier, .general-vertical, .general-horizontal, .emperor {
+    cursor: pointer;
+    position: absolute;
+    text-align: center;
+    display: flex;
+    align-items: center;
+}
+
+.soldier {
+    width: 25%;
+    height: 20%;
+}
+
+/*竖*/
+.general-vertical {
+    width: 25%;
+    height: 40%;
+}
+
+/*横*/
+.general-horizontal {
+    width: 50%;
+    height: 20%;
+}
+
+.emperor {
+    width: 50%;
+    height: 40%;
+    color: green;
+}
