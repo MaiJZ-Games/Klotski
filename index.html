@@ -6,8 +6,10 @@
 
     <link rel="stylesheet" href="index.css">
     <script src="velocity.min.js"></script>
+    <script src="BFS.js"></script>
     <script src="index.js"></script>
 
+    <script src="BFS-test.js"></script>
 </head>
 <body>
 <div id="wrapper">
@@ -72,13 +74,23 @@
                 <p>Click(Select), W(Up), S(Down), A(Left), D(Right)</p>
             </div>
             <div>
-                <button id="refresh">Refresh</button>
-                <button class="template" index="0">横刀立马1</button>
-                <button class="template" index="1">横刀立马2</button>
-                <button class="template" index="2">齐头并前</button>
-                <button class="template" index="3">兵分三路</button>
-                <button class="template" index="4">屯兵东路</button>
-                <button class="template" index="5">左右布兵</button>
+                <div>
+                    <button id="refresh">Refresh</button>
+                    <button id="auto">Auto</button>
+                    <button id="record">Record</button>
+                    <button id="record-stop">Stop Record</button>
+                    <button id="replay">Replay</button>
+                    <button id="replay-stop">Stop Replay</button>
+
+                </div>
+                <div>
+                    <button class="template" index="0">横刀立马1</button>
+                    <button class="template" index="1">横刀立马2</button>
+                    <button class="template" index="2">齐头并前</button>
+                    <button class="template" index="3">兵分三路</button>
+                    <button class="template" index="4">屯兵东路</button>
+                    <button class="template" index="5">左右布兵</button>
+                </div>
 
             </div>
         </div>

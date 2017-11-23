@@ -60,7 +60,6 @@ Chessman.prototype.offset = function (left, top) {
     this.position.top += top;
 };
 
-
 function Collection(id, left, top, organization) {
     this.position = {left: left, top: top};
     this.id = id || parseInt(Math.random() * 0xFFFFFFFF);
@@ -74,15 +73,15 @@ Collection.prototype.addChild = function (child) {
 Collection.prototype.getChildren = function () {
     return this.children;
 };
-Collection.prototype.childCount = function () {
-    return this.getChildren().length;
-};
 Collection.prototype.setPosition = function (left, top) {
     this.position.left = left;
     this.position.top = top;
 };
 Collection.prototype.getPosition = function () {
-    return this.position
+    var position = {left: 0, top: 0};
+    position.left = this.position.left;
+    position.top = this.position.top;
+    return position
 };
 Collection.prototype.offset = function (left, top) {
     this.position.left += left;
@@ -94,6 +93,12 @@ function Checkerboard(width, height) {
     this.height = height;
     this.chessmen = [];
     this.chessmenForID = {};
+    this.offsetList = {};
+    this.offsetList[MOVE.DOWN] = {left: 0, top: 1};
+    this.offsetList[MOVE.UP] = {left: 0, top: -1};
+    this.offsetList[MOVE.LEFT] = {left: -1, top: 0};
+    this.offsetList[MOVE.RIGHT] = {left: 1, top: 0};
+
 }
 Checkerboard.prototype.addChessman = function (chessman) {
     if (chessman.constructor === Chessman) {
@@ -149,34 +154,47 @@ Checkerboard.prototype.isOverflow = function (chessman) {
     }
     throw 'Is Collection';
 };
-Checkerboard.prototype.getChessman = function (id) {
-    return this.chessmenForID[id];
-};
-Checkerboard.prototype.moveUp = function (chessman) {
+Checkerboard.prototype.move = function (chessman, move) {
     const ches = this.chessmenForID[chessman.id];
     if (ches) {
-        return this.offset(chessman, 0, -1);
+        const offset = this.offsetList[move];
+        if (offset) {
+            return this.offset(chessman, offset.left, offset.top);
+        }
     }
     return false;
 };
-Checkerboard.prototype.moveDown = function (chessman) {
+Checkerboard.prototype.canMoveList = function (chessman) {
+    const result = [];
     const ches = this.chessmenForID[chessman.id];
     if (ches) {
-        return this.offset(chessman, 0, 1);
+        for (var name in MOVE) {
+            const move = MOVE[name];
+            const offset = this.offsetList[move];
+            if (this.canOffset(chessman, offset.left, offset.top)) {
+                result.push(move);
+            }
+        }
     }
-    return false;
+    return result;
 };
-Checkerboard.prototype.moveLeft = function (chessman) {
-    const ches = this.chessmenForID[chessman.id];
-    if (ches) {
-        return this.offset(chessman, -1, 0);
-    }
-    return false;
-};
-Checkerboard.prototype.moveRight = function (chessman) {
-    const ches = this.chessmenForID[chessman.id];
-    if (ches) {
-        return this.offset(chessman, 1, 0);
+Checkerboard.prototype.canOffset = function (chessman, left, top) {
+    if (chessman.constructor === Chessman) {
+        chessman.offset(left, top);
+        const result = (!this.isConflict(chessman) && !this.isOverflow(chessman));
+        chessman.offset(-left, -top);
+        return result;
+    } else if (chessman.constructor === Collection) {
+        chessman.offset(left, top);
+        const children = chessman.getChildren();
+        for (var i in children) {
+            if (this.isConflict(children[i]) || this.isOverflow(children[i])) {
+                chessman.offset(-left, -top);
+                return false;
+            }
+        }
+        chessman.offset(-left, -top);
+        return true;
     }
     return false;
 };
@@ -243,238 +261,47 @@ function buildEmperor() {
     em.addChild(em_so3);
     return em;
 }
+function Chessmen(checkerboard) {
+    var self = {};
+    self.checkerboard = checkerboard;
+    self._positionList = [];
+    self._chessmen = [];
+    self._chessmenForID = {};
+    self.isNotifyUpdate = true;
+    self._onUpdate = [];
+    self.emperor = null;
+    self.generalHorizontal = null;
+    self.generalVerticalList = [];
+    self.soldierList = [];
 
-const BASE_WIDTH = 100;
-const Checkerboard_WIDTH = 4;
-const Checkerboard_HEIGHT = 5;
-const gData = {};
-document.ready(function () {
-    var positionList = [];
-    var emperor = null;
-    var generalHorizontal = null;
-    var generalVerticalList = [];
-    var soldierList = [];
-    for (var left = 0; left < Checkerboard_WIDTH; left++) {
-        for (var top = 0; top < Checkerboard_HEIGHT; top++) {
-            positionList.push({left: left, top: top})
-        }
-    }
-    const templateList = {
-        0: {
-            emperor: {left: 1, top: 0},
-            gh: {left: 1, top: 2},
-            gv: [
-                {left: 0, top: 0},
-                {left: 3, top: 0},
-                {left: 0, top: 2},
-                {left: 3, top: 2}
-            ],
-            so: [
-                {left: 1, top: 3},
-                {left: 2, top: 3},
-                {left: 0, top: 4},
-                {left: 3, top: 4}
-            ]
-        }
-        , 1: {
-            emperor: {left: 1, top: 0},
-            gh: {left: 1, top: 2},
-            gv: [
-                {left: 0, top: 0},
-                {left: 3, top: 0},
-                {left: 0, top: 3},
-                {left: 3, top: 3}],
-            so: [
-                {left: 1, top: 3},
-                {left: 2, top: 3},
-                {left: 0, top: 2},
-                {left: 3, top: 2}]
-        }
-        , 2: {
-            emperor: {left: 1, top: 0},
-            gh: {left: 1, top: 3},
-            gv: [
-                {left: 0, top: 0},
-                {left: 3, top: 0},
-                {left: 0, top: 3},
-                {left: 3, top: 3}],
-            so: [
-                {left: 1, top: 2},
-                {left: 2, top: 2},
-                {left: 0, top: 2},
-                {left: 3, top: 2}]
-        }
-        , 3: {
-            emperor: {left: 1, top: 0},
-            gh: {left: 1, top: 2},
-            gv: [
-                {left: 0, top: 1},
-                {left: 3, top: 1},
-                {left: 0, top: 3},
-                {left: 3, top: 3}
-            ],
-            so: [
-                {left: 1, top: 3},
-                {left: 2, top: 3},
-                {left: 0, top: 0},
-                {left: 3, top: 0}
-            ]
-        }
-        , 4: {
-            emperor: {left: 0, top: 0},
-            gh: {left: 0, top: 2},
-            gv: [
-                {left: 2, top: 0},
-                {left: 3, top: 0},
-                {left: 0, top: 3},
-                {left: 1, top: 3}
-            ],
-            so: [
-                {left: 2, top: 2},
-                {left: 3, top: 2},
-                {left: 2, top: 3},
-                {left: 3, top: 3}
-            ]
-        }
-        , 5: {
-            emperor: {left: 1, top: 0},
-            gh: {left: 1, top: 4},
-            gv: [
-                {left: 0, top: 0},
-                {left: 3, top: 0},
-                {left: 1, top: 2},
-                {left: 2, top: 2}
-            ],
-            so: [
-                {left: 0, top: 3},
-                {left: 3, top: 3},
-                {left: 0, top: 4},
-                {left: 3, top: 4}
-            ]
-        }
+    self.list = function () {
+        return self._chessmen;
     };
-
-
-    gData.currentSelect = null;
-    gData.chessmen = [];
-    gData.checkerboard = new Checkerboard(Checkerboard_WIDTH, Checkerboard_HEIGHT);
-    gData.elementDict = {
-        dict: {},
-        add: function (id) {
-            const el = document.getElementById(id);
-            gData.elementDict.dict[id] = el;
-            el.onclick = gData.elementDict.select(id, el);
-        },
-        get: function (id) {
-            return gData.elementDict.dict[id];
-        },
-        select: function (id, el) {
-            return function () {
-                gData.currentSelect = gData.checkerboard.getChessman(id);
-                //console.log(gData.currentSelect);
-                gData.elementDict.updateSelect(el);
-            }
-        },
-        updateSelect: function (el) {
-            const select = 'select-el';
-            var oClass = null;
-            for (var i in gData.elementDict.dict) {
-                const e = gData.elementDict.dict[i];
-                oClass = e.getAttribute('class');
-                oClass = oClass.replace(select, '');
-                e.setAttribute('class', oClass)
-            }
-            oClass = el.getAttribute('class');
-            el.setAttribute('class', oClass + ' ' + select);
-        }
+    self.get = function (id) {
+        return self._chessmenForID[id];
     };
-
-    function addChessman(chessman) {
-        gData.elementDict.add(chessman.id);
-        gData.chessmen.push(chessman);
-    }
-    emperor = buildEmperor();
-    addChessman(emperor);
-    generalHorizontal = buildGeneralHorizontal();
-    addChessman(generalHorizontal);
-    for (var i = 0; i < 4; i++) {
-        const gv = buildGeneralVertical(i);
-        generalVerticalList.push(gv);
-        addChessman(gv);
-
-        const so = buildSoldier(i);
-        soldierList.push(so);
-        addChessman(so);
-    }
-
-
-    function updateUI() {
-        for (var i in  gData.chessmen) {
-            const chess = gData.chessmen[i];
-            const el = gData.elementDict.get(chess.id);
-            moveTo(chess, el);
+    self.move = function (id, move) {
+        const chess = self.get(id);
+        const result = self.checkerboard.move(chess, move);
+        if (result) {
+            self._notifyUpdate();
         }
-    }
-
-    function checkWin() {
-        const left = emperor.getPosition().left == 1;
-        const top = emperor.getPosition().top == 3;
-        const isWin = left && top;
-        if (isWin) {
-            const el = gData.elementDict.get(emperor.id);
-            winAni(el, refresh)
-        }
-    }
-
-    document.onkeydown = function (event) {
-        const checkerboard = gData.checkerboard;
-        const elementDict = gData.elementDict;
-        var currentSelect = gData.currentSelect;
-        var e = event || window.event || arguments.callee.caller.arguments[0];
-
-        var element = null;
-        if (currentSelect) {
-            element = elementDict.dict[currentSelect.id];
-        }
-
-        if (e && e.keyCode == 87) { // 按 W
-            if (checkerboard.moveUp(currentSelect)) {
-                moveTo(currentSelect, element);
-            }
-        }
-        if (e && e.keyCode == 83) { // 按 S
-            if (checkerboard.moveDown(currentSelect)) {
-                moveTo(currentSelect, element);
-            }
-        }
-        if (e && e.keyCode == 65) { // A 键
-            if (checkerboard.moveLeft(currentSelect)) {
-                moveTo(currentSelect, element);
-            }
-        }
-        if (e && e.keyCode == 68) { // D 键
-            if (checkerboard.moveRight(currentSelect)) {
-                moveTo(currentSelect, element);
-            }
-        }
-        checkWin();
-
+        return result;
     };
-
-    function refresh() {
-        const checkerboard = gData.checkerboard;
-
+    self.refreshPosition = function () {
+        const checkerboard = self.checkerboard;
+        const chessmen = self.list();
         var count = 0;
         do {
             count = 0;
             checkerboard.clear();
-            positionList = randomList(positionList);
-            for (var i in gData.chessmen) {
-                const chessman = gData.chessmen[i];
+            self._positionList = randomList(self._positionList);
+            for (var i in chessmen) {
+                const chessman = chessmen[i];
 
-                for (var x in positionList) {
-                    var top = positionList[x].top;
-                    var left = positionList[x].left;
+                for (var x in  self._positionList) {
+                    var top = self._positionList[x].top;
+                    var left = self._positionList[x].left;
                     chessman.setPosition(left, top);
 
                     if (checkerboard.addChessman(chessman)) {
@@ -483,25 +310,22 @@ document.ready(function () {
                     }
                 }
             }
-        } while (count < gData.chessmen.length);
-
-        updateUI();
-    }
-    document.getElementById('refresh').onclick = refresh;
-
-    function showTemplate(template) {
-        const checkerboard = gData.checkerboard;
+        } while (count < chessmen.length);
+        self._notifyUpdate();
+    };
+    self._showTemplate = function (template) {
+        const checkerboard = self.checkerboard;
         checkerboard.clear();
 
-        emperor.setPosition(template.emperor.left, template.emperor.top);
-        checkerboard.addChessman(emperor);
+        self.emperor.setPosition(template.emperor.left, template.emperor.top);
+        checkerboard.addChessman(self.emperor);
 
-        generalHorizontal.setPosition(template.gh.left, template.gh.top);
-        checkerboard.addChessman(generalHorizontal);
+        self.generalHorizontal.setPosition(template.gh.left, template.gh.top);
+        checkerboard.addChessman(self.generalHorizontal);
 
         for (var i = 0; i < 4; i++) {
-            const gv = generalVerticalList[i];
-            const so = soldierList[i];
+            const gv = self.generalVerticalList[i];
+            const so = self.soldierList[i];
 
             gv.setPosition(template.gv[i].left, template.gv[i].top);
             so.setPosition(template.so[i].left, template.so[i].top);
@@ -509,20 +333,585 @@ document.ready(function () {
             checkerboard.addChessman(gv);
             checkerboard.addChessman(so);
         }
-        updateUI();
-    }
-    const templateEl = document.getElementsByClassName('template');
-    for (var i = 0; i < templateEl.length; i++) {
-        const el = templateEl[i];
-        el.onclick = function () {
-            const index = el.getAttribute('index');
-            const temp = templateList[index];
-            showTemplate(temp);
-        };
+
+        self._notifyUpdate();
+    };
+    self.showTemplate = function (index) {
+        const temp = TemplateList[index];
+        self._showTemplate(temp);
+    };
+    self.isWin = function () {
+        const left = self.emperor.getPosition().left == 1;
+        const top = self.emperor.getPosition().top == 3;
+        return left && top;
+    };
+    self.toJson = function () {
+        var json = {};
+        for (var index in self._chessmen) {
+            const chess = self._chessmen[index];
+            json[chess.id] = chess.getPosition();
+        }
+        return json;
+    };
+    self.parse = function (json) {
+        if (json) {
+            var gv = [];
+            var so = [];
+            for (var i = 0; i < 4; i++) {
+                const gvID = self.generalVerticalList[i].id;
+                const soID = self.soldierList[i].id;
+                gv.push(json[gvID]);
+                so.push(json[soID]);
+            }
+            const template = {
+                emperor: json[self.emperor.id],
+                gh: json[self.generalHorizontal.id],
+                gv: gv,
+                so: so
+            };
+            self._showTemplate(template);
+        }
+    };
+    self._notifyUpdate = function () {
+        if (this.isNotifyUpdate) {
+            for (var i in self._onUpdate) {
+                self._onUpdate[i]();
+            }
+        }
+    };
+    self.onUpdate = function (func) {
+        self._onUpdate.push(func);
+    };
+    self.canMoveList = function () {
+        var result = [];
+        for (var i in self._chessmen) {
+            const chess = self._chessmen[i];
+            const list = self.checkerboard.canMoveList(chess);
+            for (var ii in list) {
+                result.push({
+                    id: chess.id,
+                    move: list[ii]
+                });
+            }
+        }
+        return result;
+    };
+
+    //  init
+    {
+        for (var left = 0; left < Checkerboard_WIDTH; left++) {
+            for (var top = 0; top < Checkerboard_HEIGHT; top++) {
+                self._positionList.push({left: left, top: top})
+            }
+        }
+
+        function addChessman(chessman) {
+            self._chessmen.push(chessman);
+            self._chessmenForID[chessman.id] = chessman;
+        }
+
+        self.emperor = buildEmperor();
+        addChessman(self.emperor);
+        self.generalHorizontal = buildGeneralHorizontal();
+        addChessman(self.generalHorizontal);
+
+        for (var i = 0; i < 4; i++) {
+            const gv = buildGeneralVertical(i);
+            self.generalVerticalList.push(gv);
+            addChessman(gv);
+
+            const so = buildSoldier(i);
+            self.soldierList.push(so);
+            addChessman(so);
+        }
     }
 
-    refresh();
+    return self;
+}
+
+function Save(chessmen) {
+    var self = this;
+    self._queue = [];
+    self._index = -1;
+    self.json = null;
+    if (chessmen) {
+        self.json = chessmen.toJson();
+    }
+
+    self.queue = function (queue) {
+        if (queue) {
+            self._queue = queue.slice();
+        }
+        return self._queue;
+    };
+    self.queueLen = function () {
+        return self._queue.length;
+    };
+    self.add = function (id, move) {
+        self._queue.push({
+            id: id,
+            move: move
+        });
+    };
+    self.clear = function () {
+        self._queue = [];
+        self.reset();
+    };
+    self.next = function () {
+        if (self._queue.length > 0) {
+            self._index++;
+            return self._queue[self._index];
+        }
+        return null;
+    };
+    self.reset = function () {
+        self._index = -1;
+    };
+    self.copy = function () {
+        var save = new Save();
+        save._queue = self._queue.slice();
+        save._index = self._index;
+        save.json = self.json;
+        return save;
+    };
+    self.equalJson = function (json) {
+        if (self.json) {
+            for (var key in self.json) {
+                const aP = self.json[key];
+                const bP = json[key];
+                if (bP) {
+                    if (bP.left != aP.left || bP.top != aP.top) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+            return true;
+        } else {
+            return self.json === json;
+        }
+    };
+    self.equalQueue = function (queue) {
+        for (var i in self._queue) {
+            const sItem = self._queue[i];
+            const item = queue[i];
+            if (item) {
+                if (item.id != sItem.id || item.move != sItem.move) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        return true;
+    };
+
+}
+
+
+function Recorder(chessmen) {
+    var self = {};
+    self.chessmen = chessmen;
+    self.save = null;
+    self.isRecording = false;
+    self.interval = 500;
+    self.player = -1;
+    self._onReplayUpdate = [];
+    self.record = function () {
+        self.save = new Save(self.chessmen);
+        self.isRecording = true;
+        self.stopReplay();
+    };
+    self.stopRecord = function () {
+        self.isRecording = false;
+    };
+    self.stopReplay = function () {
+        if (self.player > -1) {
+            clearInterval(self.player);
+        }
+    };
+    self.replay = function () {
+        const recorder = self;
+        recorder.stopRecord();
+        recorder.stopReplay();
+        self.chessmen.parse(recorder.save.json);
+        recorder.save.reset();
+
+        recorder.player = setInterval(function () {
+            const next = recorder.save.next();
+            if (next) {
+                self.chessmen.move(next.id, next.move)
+            } else {
+                recorder.stopReplay();
+            }
+        }, recorder.interval);
+    };
+    self.add = function (id, move) {
+        if (self.isRecording && self.save) {
+            self.save.add(id, move);
+        }
+    };
+    return self;
+}
+
+function BFS(chessmen) {
+    var self = {};
+    self.MaxDepth = 200;
+    self.chessmen = chessmen;
+
+    function ChessmenState() {
+        this.json = {};
+    }
+
+    ChessmenState.prototype = new BFS_State();
+    ChessmenState.prototype.constructor = ChessmenState;
+    ChessmenState.prototype.isTargetStatus = function () {
+        const emperor = this.json['emperor'];
+        const left = emperor.left == 1;
+        const top = emperor.top == 3;
+        return left && top;
+    };
+    ChessmenState.prototype.equal = function (state) {
+        if (state) {
+            for (var i in this.json) {
+                const sChessman = this.json[i];
+                const tChessman = state.json[i];
+                const equalLeft = (sChessman.left == tChessman.left);
+                const equalTop = (sChessman.top == tChessman.top);
+                if (!equalLeft || !equalTop) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+
+    function ChessmanTransform(id, move) {
+        this.id = id;
+        this.move = move;
+    }
+
+    ChessmanTransform.MOVE = {
+        UP: 87,
+        DOWN: 83,
+        LEFT: 65,
+        RIGHT: 68
+    };
+    ChessmanTransform.prototype.equal = function (transform) {
+        if (transform) {
+            const equalID = this.id == transform.id;
+            const equalMove = this.move == transform.move;
+            return equalID && equalMove;
+        }
+        return false;
+    };
+
+    function ChessmenStateMachine(chessmen) {
+        this.checkerboard = new Checkerboard(Checkerboard_WIDTH, Checkerboard_HEIGHT);
+        this.chessmen = new Chessmen(this.checkerboard);
+        this.chessmen.parse(chessmen.toJson());
+    }
+
+    ChessmenStateMachine.prototype = new BFS_StateMachine();
+    ChessmenStateMachine.prototype.constructor = ChessmenStateMachine;
+    ChessmenStateMachine.prototype.stateTransition = function (state) {
+        var result = new BFS_StateTransition();
+        this.chessmen.parse(state.json);
+        const list = this.chessmen.canMoveList();
+        for (var i in list) {
+            const item = list[i];
+            const cTr = new ChessmanTransform(item.id, item.move);
+            result.add(cTr);
+        }
+        return result;
+    };
+    ChessmenStateMachine.prototype.nextState = function (state, transform) {
+        var result = new ChessmenState();
+        this.chessmen.parse(state.json);
+        this.chessmen.move(transform.id, transform.move);
+        result.json = this.chessmen.toJson();
+        return result
+    };
+
+
+    self.getSave = function () {
+        var result = new Save(self.chessmen);
+
+        const csm = new ChessmenStateMachine(self.chessmen);
+        const bfs = new BreadthFirstSearch(csm);
+        bfs.MaxDepth = self.MaxDepth;
+
+        const rootState = new ChessmenState();
+        rootState.json = self.chessmen.toJson();
+
+        var list = bfs.find(rootState, null, true);
+        for (var i in list) {
+            const item = list[i];
+            const transition = item.transition;
+            if (result.queueLen() == 0) {
+                result.queue(transition.list());
+            } else if (result.queueLen() > transition.len()) {
+                result.queue(transition.list());
+            }
+        }
+
+        return result;
+    };
+    return self;
+}
+
+const BASE_WIDTH = 100;
+const Checkerboard_WIDTH = 4;
+const Checkerboard_HEIGHT = 5;
+const TemplateList = {
+    0: {
+        emperor: {left: 1, top: 0},
+        gh: {left: 1, top: 2},
+        gv: [
+            {left: 0, top: 0},
+            {left: 3, top: 0},
+            {left: 0, top: 2},
+            {left: 3, top: 2}
+        ],
+        so: [
+            {left: 1, top: 3},
+            {left: 2, top: 3},
+            {left: 0, top: 4},
+            {left: 3, top: 4}
+        ]
+    }
+    , 1: {
+        emperor: {left: 1, top: 0},
+        gh: {left: 1, top: 2},
+        gv: [
+            {left: 0, top: 0},
+            {left: 3, top: 0},
+            {left: 0, top: 3},
+            {left: 3, top: 3}],
+        so: [
+            {left: 1, top: 3},
+            {left: 2, top: 3},
+            {left: 0, top: 2},
+            {left: 3, top: 2}]
+    }
+    , 2: {
+        emperor: {left: 1, top: 0},
+        gh: {left: 1, top: 3},
+        gv: [
+            {left: 0, top: 0},
+            {left: 3, top: 0},
+            {left: 0, top: 3},
+            {left: 3, top: 3}],
+        so: [
+            {left: 1, top: 2},
+            {left: 2, top: 2},
+            {left: 0, top: 2},
+            {left: 3, top: 2}]
+    }
+    , 3: {
+        emperor: {left: 1, top: 0},
+        gh: {left: 1, top: 2},
+        gv: [
+            {left: 0, top: 1},
+            {left: 3, top: 1},
+            {left: 0, top: 3},
+            {left: 3, top: 3}
+        ],
+        so: [
+            {left: 1, top: 3},
+            {left: 2, top: 3},
+            {left: 0, top: 0},
+            {left: 3, top: 0}
+        ]
+    }
+    , 4: {
+        emperor: {left: 0, top: 0},
+        gh: {left: 0, top: 2},
+        gv: [
+            {left: 2, top: 0},
+            {left: 3, top: 0},
+            {left: 0, top: 3},
+            {left: 1, top: 3}
+        ],
+        so: [
+            {left: 2, top: 2},
+            {left: 3, top: 2},
+            {left: 2, top: 3},
+            {left: 3, top: 3}
+        ]
+    }
+    , 5: {
+        emperor: {left: 1, top: 0},
+        gh: {left: 1, top: 4},
+        gv: [
+            {left: 0, top: 0},
+            {left: 3, top: 0},
+            {left: 1, top: 2},
+            {left: 2, top: 2}
+        ],
+        so: [
+            {left: 0, top: 3},
+            {left: 3, top: 3},
+            {left: 0, top: 4},
+            {left: 3, top: 4}
+        ]
+    }
+};
+const MOVE = {
+    UP: 87,
+    DOWN: 83,
+    LEFT: 65,
+    RIGHT: 68
+};
+
+const g = {};
+document.ready(function () {
+    g.checkerboard = new Checkerboard(Checkerboard_WIDTH, Checkerboard_HEIGHT);
+    g.chessmen = Chessmen(g.checkerboard);
+    g.recorder = Recorder(g.chessmen);
+    g.BFS = BFS(g.chessmen);
+    g.ui = UI(g.chessmen, g.recorder, g.BFS);
+
+    g.chessmen.showTemplate(2);
+    const temp = {
+        emperor: {left: 2, top: 3},
+        gh: {left: 1, top: 0},
+        gv: [
+            {left: 0, top: 0},
+            {left: 3, top: 0},
+            {left: 0, top: 2},
+            {left: 1, top: 3}],
+        so: [
+            {left: 1, top: 2},
+            {left: 2, top: 1},
+            {left: 1, top: 1},
+            {left: 2, top: 2}]
+    };
+    g.chessmen._showTemplate(temp);
 });
+
+function UI(chessmen, recorder, BFS) {
+    var self = {};
+    self.chessmen = chessmen;
+    self.elementDict = {
+        dict: {},
+        add: function (id) {
+            const el = document.getElementById(id);
+            self.elementDict.dict[id] = el;
+            el.onclick = self.elementDict.select(id, el);
+        },
+        get: function (id) {
+            return self.elementDict.dict[id];
+        },
+        select: function (id, el) {
+            return function () {
+                self.currentSelect = self.chessmen.get(id);
+                self.elementDict.updateSelect(el);
+            }
+        },
+        updateSelect: function (el) {
+            const select = 'select-el';
+            var oClass = null;
+            for (var i in self.elementDict.dict) {
+                const e = self.elementDict.dict[i];
+                oClass = e.getAttribute('class');
+                oClass = oClass.replace(select, '');
+                e.setAttribute('class', oClass)
+            }
+            oClass = el.getAttribute('class');
+            el.setAttribute('class', oClass + ' ' + select);
+        }
+    };
+    self.currentSelect = null;
+    self.canOnKeyDown = true;
+    self.recorder = recorder;
+    self.BFS = BFS;
+
+    self.updateUI = function () {
+        const chessmen = self.chessmen.list();
+        for (var i in  chessmen) {
+            const chess = chessmen[i];
+            const el = self.elementDict.get(chess.id);
+            moveTo(chess, el);
+        }
+    };
+    self.refresh = function () {
+        self.chessmen.refreshPosition();
+    };
+
+    self.checkWin = function () {
+        if (self.chessmen.isWin()) {
+            const emperor = self.chessmen.emperor;
+            const el = self.elementDict.get(emperor.id);
+            winAni(el, self.refresh)
+        }
+    };
+
+    self.changeSelect = function (id) {
+        self.currentSelect = self.chessmen.get(id);
+        const el = self.elementDict.dict[id];
+        self.elementDict.updateSelect(el);
+    };
+    self.move = function (move) {
+        if (self.canOnKeyDown) {
+            const chessmen = self.chessmen;
+            const currentSelect = self.currentSelect;
+
+            const isMove = chessmen.move(currentSelect.id, move);
+
+            if (isMove) {
+                self.recorder.add(currentSelect.id, move);
+            }
+        }
+    };
+    self.auto = function () {
+        const save = self.BFS.getSave();
+        if (save) {
+            self.recorder.save = save;
+            self.recorder.replay();
+        }
+    };
+
+    {
+        self.chessmen.onUpdate(function () {
+            self.updateUI();
+            self.checkWin();
+        });
+
+        const chessmen = self.chessmen.list();
+        for (var i in chessmen) {
+            self.elementDict.add(chessmen[i].id);
+        }
+
+        document.onkeydown = function (event) {
+            var e = event || window.event || arguments.callee.caller.arguments[0];
+            if (e) {
+                self.move(e.keyCode);
+            }
+        };
+
+        const templateEl = document.getElementsByClassName('template');
+        for (var i = 0; i < templateEl.length; i++) {
+            const el = templateEl[i];
+            el.onclick = function () {
+                const index = el.getAttribute('index');
+                self.chessmen.showTemplate(index);
+                self.updateUI();
+            };
+        }
+
+        document.getElementById('refresh').onclick = self.refresh;
+        document.getElementById('record').onclick = self.recorder.record;
+        document.getElementById('record-stop').onclick = self.recorder.stopRecord;
+        document.getElementById('replay').onclick = self.recorder.replay;
+        document.getElementById('replay-stop').onclick = self.recorder.stopReplay;
+        document.getElementById('auto').onclick = self.auto;
+
+        self.refresh();
+    }
+    return self;
+}
 
 function winAni(el, callback) {
     Velocity(el, {
